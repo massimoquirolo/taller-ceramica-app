@@ -1,44 +1,38 @@
 // src/componentes/DashboardAlumna.jsx
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import supabase from '../supabaseCliente'
 
+// Recibimos 'usuarioId' (sigue igual)
 function DashboardAlumna({ perfil, usuarioId }) {
   
-  // --- Estados del Formulario de Piezas ---
+  // --- Estados del Formulario de Piezas (siguen igual) ---
   const [nombrePieza, setNombrePieza] = useState('')
-  // NUEVO: Estado para el archivo de la foto
   const [archivoFoto, setArchivoFoto] = useState(null)
-  
   const [cargandoForm, setCargandoForm] = useState(false) 
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState(false)
 
-  // --- Estados de la Lista de Piezas ---
+  // --- Estados de las Listas de Datos ---
   const [piezas, setPiezas] = useState([])
   const [cargandoPiezas, setCargandoPiezas] = useState(true)
-
-  // --- Estados de la Lista de Pagos ---
   const [pagos, setPagos] = useState([])
   const [cargandoPagos, setCargandoPagos] = useState(true)
+  const [costos, setCostos] = useState([])
+  const [cargandoCostos, setCargandoCostos] = useState(true)
 
-  // --- useEffect para cargar PIEZAS (MODIFICADO) ---
-  // Ahora también pedimos la 'foto_url'
+
+  // --- useEffect para cargar PIEZAS (sigue igual) ---
   useEffect(() => {
     async function obtenerPiezas() {
       setCargandoPiezas(true)
-      // NUEVO: Pedimos 'foto_url'
       const { data, error } = await supabase
         .from('piezas')
         .select('id, nombre_pieza, estado, created_at, foto_url') 
         .eq('alumna_id', usuarioId)
         .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error al cargar piezas:', error.message)
-      } else {
-        setPiezas(data)
-      }
+      if (error) console.error('Error al cargar piezas:', error.message)
+      else setPiezas(data)
       setCargandoPiezas(false)
     }
     obtenerPiezas()
@@ -53,26 +47,39 @@ function DashboardAlumna({ perfil, usuarioId }) {
         .select('id, monto, concepto, created_at')
         .eq('alumna_id', usuarioId)
         .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error al cargar pagos:', error.message)
-      } else {
-        setPagos(data)
-      }
+      if (error) console.error('Error al cargar pagos:', error.message)
+      else setPagos(data)
       setCargandoPagos(false)
     }
     obtenerPagos()
   }, [usuarioId])
+  
+  // --- useEffect para cargar COSTOS (sigue igual) ---
+  useEffect(() => {
+    async function obtenerCostos() {
+      setCargandoCostos(true)
+      const { data, error } = await supabase
+        .from('costos')
+        .select('id, monto, concepto, created_at')
+        .eq('alumna_id', usuarioId)
+        .order('created_at', { ascending: false })
+      if (error) console.error('Error al cargar costos:', error.message)
+      else setCostos(data)
+      setCargandoCostos(false)
+    }
+    obtenerCostos()
+  }, [usuarioId])
 
 
-  // --- NUEVO: Función para manejar la selección de la foto ---
+  // --- ¡FUNCIÓN QUE FALTABA! ---
+  // La re-agregamos aquí
   function manejarSeleccionFoto(evento) {
     if (evento.target.files && evento.target.files[0]) {
       setArchivoFoto(evento.target.files[0])
     }
   }
 
-  // --- FUNCIÓN DE SUBMIT (¡MUY MODIFICADA!) ---
+  // --- Función de Submit de Pieza (sigue igual) ---
   async function manejarSubmitNuevaPieza(evento) {
     evento.preventDefault()
     if (!nombrePieza) {
@@ -84,47 +91,35 @@ function DashboardAlumna({ perfil, usuarioId }) {
     setCargandoForm(true)
     setMensaje('')
     setError(false)
+    let urlDeFotoPublica = null 
 
-    let urlDeFotoPublica = null // Variable para guardar la URL de la foto
-
-    // --- NUEVO: PASO 1 - Subir la foto (si existe) ---
     if (archivoFoto) {
-      // Creamos un nombre único para el archivo (ej: 'IDUsuario-timestamp.jpg')
       const nombreArchivo = `${usuarioId}-${Date.now()}`
-      
       const { data: dataSubida, error: errorSubida } = await supabase.storage
-        .from('piezas') // El bucket que creamos
-        .upload(nombreArchivo, archivoFoto, {
-          cacheControl: '3600', // 1 hora de caché
-          upsert: false
-        })
+        .from('piezas')
+        .upload(nombreArchivo, archivoFoto)
 
       if (errorSubida) {
-        // Si falla la subida de la foto, paramos
         setCargandoForm(false)
         setError(true)
         setMensaje(`Error al subir la foto: ${errorSubida.message}`)
         return
       }
 
-      // Si la foto sube bien, obtenemos su URL pública
       const { data: dataUrl } = supabase.storage
         .from('piezas')
         .getPublicUrl(nombreArchivo)
-      
       urlDeFotoPublica = dataUrl.publicUrl
     }
 
-    // --- PASO 2: Insertar la pieza en la base de datos (como antes) ---
-    // (Ahora incluimos la 'foto_url' si existe)
     const { data: dataInsert, error: errorInsert } = await supabase
       .from('piezas')
       .insert({ 
         nombre_pieza: nombrePieza,
         alumna_id: usuarioId,
-        foto_url: urlDeFotoPublica // Aquí va la URL (o null si no hay foto)
+        foto_url: urlDeFotoPublica
       })
-      .select('id, nombre_pieza, estado, created_at, foto_url') // Pedimos la fila completa
+      .select('id, nombre_pieza, estado, created_at, foto_url')
 
     setCargandoForm(false)
 
@@ -132,17 +127,14 @@ function DashboardAlumna({ perfil, usuarioId }) {
       setError(true)
       setMensaje(`Error al registrar la pieza: ${errorInsert.message}`)
     } else {
-      // ¡Éxito!
       setError(false)
       setMensaje('¡Pieza registrada con éxito!')
-      setNombrePieza('') // Limpiamos el formulario
-      setArchivoFoto(null) // Limpiamos la foto
-      
+      setNombrePieza('')
+      setArchivoFoto(null) 
       const [nuevaPieza] = dataInsert
       setPiezas(piezasActuales => [nuevaPieza, ...piezasActuales])
     }
   }
-
 
   // --- Función para formatear dinero (sigue igual) ---
   function formatearMoneda(valor) {
@@ -152,107 +144,69 @@ function DashboardAlumna({ perfil, usuarioId }) {
     }).format(valor)
   }
 
+  // --- Lógica de Cálculo de Saldos (sigue igual) ---
+  const [totalCostos, totalPagos, saldoPendiente] = useMemo(() => {
+    const totalCostos = costos.reduce((acc, costo) => acc + (costo.monto || 0), 0)
+    const totalPagos = pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
+    const saldoPendiente = totalCostos - totalPagos
+    
+    return [totalCostos, totalPagos, saldoPendiente]
+  }, [costos, pagos])
+
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       
-      {/* --- COLUMNA 1 y 2: PIEZAS --- */}
+      {/* --- COLUMNA 1 y 2: PIEZAS (sigue igual) --- */}
       <div className="md:col-span-2">
         <h2 className="text-3xl font-semibold text-taller-green mb-4">
           Mi Taller
         </h2>
-        {/* ... (texto de 'p' sigue igual) ... */}
-
-        {/* Formulario de Pieza (MODIFICADO) */}
+        
+        {/* Formulario de Pieza */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-inner max-w-md mb-12">
           <h3 className="text-xl font-semibold text-white mb-4">
             Registrar una Pieza Nueva
           </h3>
           <form onSubmit={manejarSubmitNuevaPieza}>
-            
-            {/* Input de Nombre (sigue igual) */}
             <div className="mb-4">
               <label htmlFor="nombrePieza" className="block text-sm font-medium text-gray-300 mb-2">
                 Nombre o descripción
               </label>
-              <input
-                type="text"
-                id="nombrePieza"
-                className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:outline-none focus:border-blue-500"
-                placeholder="Ej: Taza mediana con asa"
-                value={nombrePieza}
-                onChange={(e) => setNombrePieza(e.target.value)}
-                disabled={cargandoForm}
-              />
+              <input type="text" id="nombrePieza" className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:outline-none focus:border-blue-500" placeholder="Ej: Taza mediana con asa" value={nombrePieza} onChange={(e) => setNombrePieza(e.target.value)} disabled={cargandoForm}/>
             </div>
-
-            {/* NUEVO: Input de Foto */}
             <div className="mb-4">
               <label htmlFor="fotoPieza" className="block text-sm font-medium text-gray-300 mb-2">
                 Foto (Opcional)
               </label>
-              <input
-                type="file"
-                id="fotoPieza"
-                className="w-full text-sm text-gray-400
-                  file:mr-4 file:py-2 file:px-4
-                  file:rounded-full file:border-0
-                  file:text-sm file:font-semibold
-                  file:bg-taller-beige file:text-taller-dark-blue
-                  hover:file:bg-taller-green"
-                onChange={manejarSeleccionFoto}
-                disabled={cargandoForm}
-                accept="image/png, image/jpeg" // Acepta solo imágenes
+              <input type="file" id="fotoPieza" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-taller-beige file:text-taller-dark-blue hover:file:bg-taller-green" 
+                onChange={manejarSeleccionFoto} // Aquí es donde se llamaba
+                disabled={cargandoForm} 
+                accept="image/png, image/jpeg"
               />
             </div>
-            
-            <button 
-              type="submit" 
-              className="w-full px-4 py-2 bg-taller-green text-taller-dark-blue font-bold hover:bg-taller-beige disabled:bg-gray-500 transition-colors"
-              disabled={cargandoForm}
-            >
+            <button type="submit" className="w-full px-4 py-2 bg-taller-green text-taller-dark-blue font-bold hover:bg-taller-beige disabled:bg-gray-500 transition-colors" disabled={cargandoForm}>
               {cargandoForm ? 'Registrando...' : 'Registrar Pieza'}
             </button>
           </form>
-          {mensaje && (
-            <p className={`mt-4 text-sm ${error ? 'text-red-400' : 'text-green-400'}`}>
-              {mensaje}
-            </p>
-          )}
+          {mensaje && <p className={`mt-4 text-sm ${error ? 'text-red-400' : 'text-green-400'}`}>{mensaje}</p>}
         </div>
 
-        {/* Lista de Piezas (MODIFICADA) */}
+        {/* Lista de Piezas */}
         <div className="mt-12">
           <h3 className="text-2xl font-semibold text-white mb-6">
             Mis Piezas Registradas
           </h3>
-          {cargandoPiezas ? (
-            <p className="text-gray-400">Cargando tus piezas...</p>
-          ) : piezas.length === 0 ? (
-            <p className="text-gray-400">Aún no has registrado ninguna pieza.</p>
-          ) : (
+          {cargandoPiezas ? ( <p className="text-gray-400">Cargando tus piezas...</p> ) : piezas.length === 0 ? ( <p className="text-gray-400">Aún no has registrado ninguna pieza.</p> ) : (
             <div className="space-y-4">
               {piezas.map((pieza) => (
-                <div 
-                  key={pieza.id} 
-                  className="bg-gray-800 p-4 rounded-lg flex justify-between items-center shadow-md"
-                >
-                  {/* NUEVO: Contenedor flex para foto + texto */}
+                <div key={pieza.id} className="bg-gray-800 p-4 rounded-lg flex justify-between items-center shadow-md">
                   <div className="flex items-center gap-4">
-                    {/* Mostramos la foto si existe */}
                     {pieza.foto_url ? (
-                      <img 
-                        src={pieza.foto_url} 
-                        alt={pieza.nombre_pieza}
-                        className="w-16 h-16 rounded-md object-cover" // Estilo de la miniatura
-                      />
+                      <img src={pieza.foto_url} alt={pieza.nombre_pieza} className="w-16 h-16 rounded-md object-cover"/>
                     ) : (
-                      <div className="w-16 h-16 rounded-md bg-gray-700 flex items-center justify-center text-gray-500 text-xs">
-                        Sin foto
-                      </div>
+                      <div className="w-16 h-16 rounded-md bg-gray-700 flex items-center justify-center text-gray-500 text-xs">Sin foto</div>
                     )}
-                    
-                    {/* Info de la pieza */}
                     <div>
                       <p className="text-lg font-medium text-white">{pieza.nombre_pieza}</p>
                       <p className="text-sm text-gray-400">
@@ -260,8 +214,6 @@ function DashboardAlumna({ perfil, usuarioId }) {
                       </p>
                     </div>
                   </div>
-                  
-                  {/* Estado (sigue igual) */}
                   <span className="px-3 py-1 bg-gray-700 text-yellow-300 text-sm font-semibold rounded-full uppercase tracking-wider">
                     {pieza.estado}
                   </span>
@@ -272,34 +224,54 @@ function DashboardAlumna({ perfil, usuarioId }) {
         </div>
       </div>
 
-      {/* --- COLUMNA 3: PAGOS (sigue igual) --- */}
+
+      {/* --- COLUMNA 3: ESTADO DE CUENTA (sigue igual) --- */}
       <div className="md:col-span-1">
-        {/* ... (Todo el JSX de Mis Pagos sigue exactamente igual) ... */}
-        <h2 className="text-3xl font-semibold text-green-300 mb-4">
-          Mis Pagos
+        <h2 className="text-3xl font-semibold text-taller-green mb-4">
+          Mi Cuenta
         </h2>
-        <p className="text-lg text-gray-400 mb-8">
-          Historial de pagos de horneados.
+        <p className="text-lg text-taller-beige/80 mb-8">
+          Resumen de costos y pagos.
         </p>
 
+        {/* Tarjeta de Saldo Pendiente */}
+        <div className="bg-gray-800 p-6 rounded-lg shadow-inner mb-8">
+          <h3 className="text-xl font-semibold text-white mb-4">
+            Saldo Pendiente
+          </h3>
+          {(cargandoCostos || cargandoPagos) ? (
+            <p className="text-gray-400">Calculando saldo...</p>
+          ) : (
+            <div>
+              <p className="text-sm text-red-400">Total Horneados (Costos):</p>
+              <p className="text-2xl font-bold text-red-400 mb-2">
+                {formatearMoneda(totalCostos)}
+              </p>
+              
+              <p className="text-sm text-green-400">Total Pagos Realizados:</p>
+              <p className="text-2xl font-bold text-green-400 mb-4">
+                {formatearMoneda(totalPagos)}
+              </p>
+              
+              <hr className="border-taller-beige/20 my-4" />
+              
+              <p className="text-lg font-semibold text-white">Saldo a Pagar:</p>
+              <p className="text-4xl font-bold text-taller-green">
+                {formatearMoneda(saldoPendiente)}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Historial de Pagos */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-inner">
           <h3 className="text-xl font-semibold text-white mb-6">
-            Historial
+            Historial de Pagos
           </h3>
-
-          {cargandoPagos ? (
-            <p className="text-gray-400">Cargando tus pagos...</p>
-          ) 
-          : pagos.length === 0 ? (
-            <p className="text-gray-400">Aún no tienes pagos registrados.</p>
-          ) 
-          : (
+          {cargandoPagos ? ( <p className="text-gray-400">Cargando tus pagos...</p> ) : pagos.length === 0 ? ( <p className="text-gray-400">Aún no tienes pagos registrados.</p> ) : (
             <div className="space-y-4">
               {pagos.map((pago) => (
-                <div 
-                  key={pago.id} 
-                  className="bg-gray-700 p-3 rounded-lg flex justify-between items-center"
-                >
+                <div key={pago.id} className="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
                   <div>
                     <p className="text-lg font-medium text-green-400">
                       {formatearMoneda(pago.monto)}
@@ -316,6 +288,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
             </div>
           )}
         </div>
+        
       </div>
       
     </div>
