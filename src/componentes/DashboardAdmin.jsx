@@ -136,7 +136,7 @@ function DashboardAdmin({ perfil }) {
 
   return (
     <div>
-      <h2 className="text-3xl font-semibold text-orange-300 mb-4">
+      <h2 className="text-3xl font-semibold text-taller-green mb-4">
         Panel de Administración
       </h2>
       <p className="text-lg text-gray-400 mb-8">
@@ -206,7 +206,7 @@ function DashboardAdmin({ perfil }) {
 
             <button 
               type="submit" 
-              className="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:bg-gray-500 transition-colors"
+              className="w-full px-4 py-2 bg-taller-green text-taller-dark-blue font-bold hover:bg-taller-beige text-white font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:bg-gray-500 transition-colors"
               disabled={cargandoPago}
             >
               {cargandoPago ? 'Registrando...' : 'Registrar Pago'}

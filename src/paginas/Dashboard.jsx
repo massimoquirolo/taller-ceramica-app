@@ -78,12 +78,13 @@ function PaginaDashboard({ sesion }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    // ¡LIMPIADO! El 'body' ya tiene los colores base.
+    <div className="min-h-screen p-8"> 
       
       {/* Encabezado común */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold text-green-400">
-          Taller de Cerámica
+        <h1 className="text-4xl font-bold text-taller-green"> {/* ¡NUEVO COLOR! */}
+          Barro Tal Vez
         </h1>
         
         <button 
@@ -94,9 +95,9 @@ function PaginaDashboard({ sesion }) {
         </button>
       </div>
 
-      <hr className="border-gray-700 mb-6" />
+      <hr className="border-taller-beige/20 mb-6" /> {/* Borde con opacidad */}
 
-      {/* Aquí llamamos a nuestra función "aiguillero" */}
+      {/* El resto funciona igual */}
       {renderizarDashboardSegunRol()}
 
     </div>

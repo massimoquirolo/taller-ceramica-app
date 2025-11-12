@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Le decimos a Tailwind que aplique esto en la capa 'base' */
+@layer base {
+  body {
+    @apply bg-taller-dark-blue text-taller-beige;
+  }
+}

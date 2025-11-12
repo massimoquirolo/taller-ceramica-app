@@ -1,12 +1,19 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  // Archivos que Tailwind debe escanear para encontrar clases de estilo
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}", // Lee todos los archivos jsx, js, etc. dentro de 'src'
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
-  },
-  plugins: [],
+    extend: {
+      colors: {
+        'taller-dark-blue': '#31405D',
+        'taller-beige': '#EAE3D0',
+        'taller-green': '#C8CCB8',
+      }
+    },
+  }, // <-- La llave de 'theme' se cierra AQUÍ
+
+  // 'plugins' va AFUERA de 'theme', al mismo nivel.
+  plugins: [], 
 }

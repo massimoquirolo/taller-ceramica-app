@@ -14,7 +14,20 @@ function PaginaLogin() {
 
         <Auth
           supabaseClient={supabase}
-          appearance={{ theme: ThemeSupa }}
+          appearance={{
+            theme: ThemeSupa, // Mantenemos la base oscura
+            variables: {
+              default: {
+                colors: {
+                  brand: '#C8CCB8', // Botones (nuestro verde)
+                  brandAccent: '#AAB09C', // Botones (hover)
+                  inputBackground: '#EAE3D0', // Fondo del input (nuestro beige)
+                  inputText: '#31405D', // Texto DENTRO del input (nuestro azul)
+                  defaultButtonText: '#31405D', // Texto del botón
+                },
+              },
+            },
+          }}
           providers={[]}
           localization={{
             variables: {

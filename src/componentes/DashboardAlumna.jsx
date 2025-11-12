@@ -117,7 +117,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
       
       {/* --- COLUMNA 1 y 2: PIEZAS (Ocupa 2/3) --- */}
       <div className="md:col-span-2">
-        <h2 className="text-3xl font-semibold text-blue-300 mb-4">
+        <h2 className="text-3xl font-semibold text-taller-green mb-4">
           Mi Taller
         </h2>
         <p className="text-lg text-gray-400 mb-8">
@@ -147,7 +147,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
             </div>
             <button 
               type="submit" 
-              className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-gray-500 transition-colors"
+              className="w-full px-4 py-2 bg-taller-green text-taller-dark-blue font-bold hover:bg-taller-beigebg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-gray-500 transition-colors"
               disabled={cargandoForm}
             >
               {cargandoForm ? 'Registrando...' : 'Registrar Pieza'}
