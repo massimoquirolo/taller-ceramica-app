@@ -42,14 +42,23 @@ function PaginaDashboard({ sesion }) {
 
   // Función para cerrar la sesión (sigue igual)
   async function cerrarSesion() {
-    const { error } = await supabase.auth.signOut()
-    
-    if (error) {
-      console.error('Error al cerrar sesión:', error.message)
-    } else {
-      // ¡NUEVO! Forzamos un refresco de la página.
-      // Esto limpia todo el estado de React y fuerza a App.jsx
-      // a re-evaluar la sesión desde cero.
+    try {
+      // 1. Intentamos cerrar la sesión
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        // Si hay un error "real", lo mostramos
+        console.error('Error al cerrar sesión:', error.message)
+      }
+
+    } catch (error) {
+      // Capturamos cualquier otro error
+      console.error('Error en el proceso de signOut:', error)
+
+    } finally {
+      // 2. ¡SIEMPRE! Haya o no haya error,
+      // recargamos la página para forzar
+      // que App.jsx vuelva a chequear todo.
       window.location.reload()
     }
   }
