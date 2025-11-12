@@ -1,33 +1,36 @@
 // src/componentes/DashboardAlumna.jsx
 
-// Importamos 'useEffect' además de 'useState'
 import { useState, useEffect } from 'react'
 import supabase from '../supabaseCliente'
 
-// Recibimos 'usuarioId' (sigue igual)
 function DashboardAlumna({ perfil, usuarioId }) {
   
-  // --- Estados del Formulario de Piezas (siguen igual) ---
+  // --- Estados del Formulario de Piezas ---
   const [nombrePieza, setNombrePieza] = useState('')
+  // NUEVO: Estado para el archivo de la foto
+  const [archivoFoto, setArchivoFoto] = useState(null)
+  
   const [cargandoForm, setCargandoForm] = useState(false) 
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState(false)
 
-  // --- Estados de la Lista de Piezas (siguen igual) ---
+  // --- Estados de la Lista de Piezas ---
   const [piezas, setPiezas] = useState([])
   const [cargandoPiezas, setCargandoPiezas] = useState(true)
 
-  // --- NUEVO: Estados de la Lista de Pagos ---
+  // --- Estados de la Lista de Pagos ---
   const [pagos, setPagos] = useState([])
   const [cargandoPagos, setCargandoPagos] = useState(true)
 
-  // --- useEffect para cargar PIEZAS (sigue igual) ---
+  // --- useEffect para cargar PIEZAS (MODIFICADO) ---
+  // Ahora también pedimos la 'foto_url'
   useEffect(() => {
     async function obtenerPiezas() {
       setCargandoPiezas(true)
+      // NUEVO: Pedimos 'foto_url'
       const { data, error } = await supabase
         .from('piezas')
-        .select('id, nombre_pieza, estado, created_at')
+        .select('id, nombre_pieza, estado, created_at, foto_url') 
         .eq('alumna_id', usuarioId)
         .order('created_at', { ascending: false })
 
@@ -41,19 +44,15 @@ function DashboardAlumna({ perfil, usuarioId }) {
     obtenerPiezas()
   }, [usuarioId])
 
-  // --- NUEVO: useEffect para cargar PAGOS ---
-  // Esto también se ejecuta una sola vez
+  // --- useEffect para cargar PAGOS (sigue igual) ---
   useEffect(() => {
     async function obtenerPagos() {
       setCargandoPagos(true)
-      
-      // La RLS que creamos ("Alumnas pueden ver sus propios pagos")
-      // filtrará esto automáticamente por el 'usuarioId'.
       const { data, error } = await supabase
         .from('pagos')
         .select('id, monto, concepto, created_at')
-        .eq('alumna_id', usuarioId) // Doble seguridad, aunque la RLS ya lo hace
-        .order('created_at', { ascending: false }) // Los más nuevos primero
+        .eq('alumna_id', usuarioId)
+        .order('created_at', { ascending: false })
 
       if (error) {
         console.error('Error al cargar pagos:', error.message)
@@ -63,10 +62,17 @@ function DashboardAlumna({ perfil, usuarioId }) {
       setCargandoPagos(false)
     }
     obtenerPagos()
-  }, [usuarioId]) // Se re-ejecuta si el ID de usuario cambia
+  }, [usuarioId])
 
 
-  // --- Función de Submit de Pieza (sigue igual) ---
+  // --- NUEVO: Función para manejar la selección de la foto ---
+  function manejarSeleccionFoto(evento) {
+    if (evento.target.files && evento.target.files[0]) {
+      setArchivoFoto(evento.target.files[0])
+    }
+  }
+
+  // --- FUNCIÓN DE SUBMIT (¡MUY MODIFICADA!) ---
   async function manejarSubmitNuevaPieza(evento) {
     evento.preventDefault()
     if (!nombrePieza) {
@@ -79,13 +85,46 @@ function DashboardAlumna({ perfil, usuarioId }) {
     setMensaje('')
     setError(false)
 
+    let urlDeFotoPublica = null // Variable para guardar la URL de la foto
+
+    // --- NUEVO: PASO 1 - Subir la foto (si existe) ---
+    if (archivoFoto) {
+      // Creamos un nombre único para el archivo (ej: 'IDUsuario-timestamp.jpg')
+      const nombreArchivo = `${usuarioId}-${Date.now()}`
+      
+      const { data: dataSubida, error: errorSubida } = await supabase.storage
+        .from('piezas') // El bucket que creamos
+        .upload(nombreArchivo, archivoFoto, {
+          cacheControl: '3600', // 1 hora de caché
+          upsert: false
+        })
+
+      if (errorSubida) {
+        // Si falla la subida de la foto, paramos
+        setCargandoForm(false)
+        setError(true)
+        setMensaje(`Error al subir la foto: ${errorSubida.message}`)
+        return
+      }
+
+      // Si la foto sube bien, obtenemos su URL pública
+      const { data: dataUrl } = supabase.storage
+        .from('piezas')
+        .getPublicUrl(nombreArchivo)
+      
+      urlDeFotoPublica = dataUrl.publicUrl
+    }
+
+    // --- PASO 2: Insertar la pieza en la base de datos (como antes) ---
+    // (Ahora incluimos la 'foto_url' si existe)
     const { data: dataInsert, error: errorInsert } = await supabase
       .from('piezas')
       .insert({ 
         nombre_pieza: nombrePieza,
-        alumna_id: usuarioId 
+        alumna_id: usuarioId,
+        foto_url: urlDeFotoPublica // Aquí va la URL (o null si no hay foto)
       })
-      .select()
+      .select('id, nombre_pieza, estado, created_at, foto_url') // Pedimos la fila completa
 
     setCargandoForm(false)
 
@@ -93,16 +132,19 @@ function DashboardAlumna({ perfil, usuarioId }) {
       setError(true)
       setMensaje(`Error al registrar la pieza: ${errorInsert.message}`)
     } else {
+      // ¡Éxito!
       setError(false)
       setMensaje('¡Pieza registrada con éxito!')
-      setNombrePieza('') 
+      setNombrePieza('') // Limpiamos el formulario
+      setArchivoFoto(null) // Limpiamos la foto
+      
       const [nuevaPieza] = dataInsert
       setPiezas(piezasActuales => [nuevaPieza, ...piezasActuales])
     }
   }
 
-  // --- NUEVO: Función para formatear dinero ---
-  // (Un 'ayudante' para que 5000 se vea como $5.000,00)
+
+  // --- Función para formatear dinero (sigue igual) ---
   function formatearMoneda(valor) {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -112,28 +154,26 @@ function DashboardAlumna({ perfil, usuarioId }) {
 
 
   return (
-    // Usamos 'grid' de Tailwind para poner las columnas una al lado de la otra
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       
-      {/* --- COLUMNA 1 y 2: PIEZAS (Ocupa 2/3) --- */}
+      {/* --- COLUMNA 1 y 2: PIEZAS --- */}
       <div className="md:col-span-2">
         <h2 className="text-3xl font-semibold text-taller-green mb-4">
           Mi Taller
         </h2>
-        <p className="text-lg text-gray-400 mb-8">
-          Aquí verás tus piezas y su estado.
-        </p>
+        {/* ... (texto de 'p' sigue igual) ... */}
 
-        {/* Formulario de Pieza (sigue igual) */}
+        {/* Formulario de Pieza (MODIFICADO) */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-inner max-w-md mb-12">
           <h3 className="text-xl font-semibold text-white mb-4">
             Registrar una Pieza Nueva
           </h3>
           <form onSubmit={manejarSubmitNuevaPieza}>
-            {/* ... (input y botón del formulario) ... */}
+            
+            {/* Input de Nombre (sigue igual) */}
             <div className="mb-4">
               <label htmlFor="nombrePieza" className="block text-sm font-medium text-gray-300 mb-2">
-                Nombre o descripción de la pieza
+                Nombre o descripción
               </label>
               <input
                 type="text"
@@ -145,9 +185,30 @@ function DashboardAlumna({ perfil, usuarioId }) {
                 disabled={cargandoForm}
               />
             </div>
+
+            {/* NUEVO: Input de Foto */}
+            <div className="mb-4">
+              <label htmlFor="fotoPieza" className="block text-sm font-medium text-gray-300 mb-2">
+                Foto (Opcional)
+              </label>
+              <input
+                type="file"
+                id="fotoPieza"
+                className="w-full text-sm text-gray-400
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-full file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-taller-beige file:text-taller-dark-blue
+                  hover:file:bg-taller-green"
+                onChange={manejarSeleccionFoto}
+                disabled={cargandoForm}
+                accept="image/png, image/jpeg" // Acepta solo imágenes
+              />
+            </div>
+            
             <button 
               type="submit" 
-              className="w-full px-4 py-2 bg-taller-green text-taller-dark-blue font-bold hover:bg-taller-beigebg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-gray-500 transition-colors"
+              className="w-full px-4 py-2 bg-taller-green text-taller-dark-blue font-bold hover:bg-taller-beige disabled:bg-gray-500 transition-colors"
               disabled={cargandoForm}
             >
               {cargandoForm ? 'Registrando...' : 'Registrar Pieza'}
@@ -160,7 +221,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
           )}
         </div>
 
-        {/* Lista de Piezas (sigue igual) */}
+        {/* Lista de Piezas (MODIFICADA) */}
         <div className="mt-12">
           <h3 className="text-2xl font-semibold text-white mb-6">
             Mis Piezas Registradas
@@ -176,12 +237,31 @@ function DashboardAlumna({ perfil, usuarioId }) {
                   key={pieza.id} 
                   className="bg-gray-800 p-4 rounded-lg flex justify-between items-center shadow-md"
                 >
-                  <div>
-                    <p className="text-lg font-medium text-white">{pieza.nombre_pieza}</p>
-                    <p className="text-sm text-gray-400">
-                      Registrada el: {new Date(pieza.created_at).toLocaleDateString()}
-                    </p>
+                  {/* NUEVO: Contenedor flex para foto + texto */}
+                  <div className="flex items-center gap-4">
+                    {/* Mostramos la foto si existe */}
+                    {pieza.foto_url ? (
+                      <img 
+                        src={pieza.foto_url} 
+                        alt={pieza.nombre_pieza}
+                        className="w-16 h-16 rounded-md object-cover" // Estilo de la miniatura
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-md bg-gray-700 flex items-center justify-center text-gray-500 text-xs">
+                        Sin foto
+                      </div>
+                    )}
+                    
+                    {/* Info de la pieza */}
+                    <div>
+                      <p className="text-lg font-medium text-white">{pieza.nombre_pieza}</p>
+                      <p className="text-sm text-gray-400">
+                        Registrada el: {new Date(pieza.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
+                  
+                  {/* Estado (sigue igual) */}
                   <span className="px-3 py-1 bg-gray-700 text-yellow-300 text-sm font-semibold rounded-full uppercase tracking-wider">
                     {pieza.estado}
                   </span>
@@ -192,8 +272,9 @@ function DashboardAlumna({ perfil, usuarioId }) {
         </div>
       </div>
 
-      {/* --- NUEVO: COLUMNA 3: PAGOS (Ocupa 1/3) --- */}
+      {/* --- COLUMNA 3: PAGOS (sigue igual) --- */}
       <div className="md:col-span-1">
+        {/* ... (Todo el JSX de Mis Pagos sigue exactamente igual) ... */}
         <h2 className="text-3xl font-semibold text-green-300 mb-4">
           Mis Pagos
         </h2>
