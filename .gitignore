@@ -1,0 +1,23 @@
+# Dependencias de Node
+node_modules/
+
+# Archivos de caché y logs de NPM
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Archivos de caché de Vite
+.vite/
+dist/
+.npm/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de variables de entorno (¡MUY IMPORTANTE!)
+# (Aunque no lo usamos, lo pondremos por si acaso en el futuro)
+.env
+.env.local
+.env.*.local
