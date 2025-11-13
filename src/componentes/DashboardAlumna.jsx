@@ -6,14 +6,12 @@ import supabase from '../supabaseCliente'
 // Recibimos 'usuarioId' (sigue igual)
 function DashboardAlumna({ perfil, usuarioId }) {
   
-  // --- Estados del Formulario de Piezas (siguen igual) ---
+  // --- Estados (sin cambios) ---
   const [nombrePieza, setNombrePieza] = useState('')
   const [archivoFoto, setArchivoFoto] = useState(null)
   const [cargandoForm, setCargandoForm] = useState(false) 
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState(false)
-
-  // --- Estados de las Listas de Datos ---
   const [piezas, setPiezas] = useState([])
   const [cargandoPiezas, setCargandoPiezas] = useState(true)
   const [pagos, setPagos] = useState([])
@@ -22,7 +20,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
   const [cargandoCostos, setCargandoCostos] = useState(true)
 
 
-  // --- useEffect para cargar PIEZAS (sigue igual) ---
+  // --- useEffect para cargar PIEZAS (sin cambios) ---
   useEffect(() => {
     async function obtenerPiezas() {
       setCargandoPiezas(true)
@@ -38,7 +36,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
     obtenerPiezas()
   }, [usuarioId])
 
-  // --- useEffect para cargar PAGOS (sigue igual) ---
+  // --- useEffect para cargar PAGOS (sin cambios) ---
   useEffect(() => {
     async function obtenerPagos() {
       setCargandoPagos(true)
@@ -54,7 +52,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
     obtenerPagos()
   }, [usuarioId])
   
-  // --- useEffect para cargar COSTOS (sigue igual) ---
+  // --- useEffect para cargar COSTOS (sin cambios) ---
   useEffect(() => {
     async function obtenerCostos() {
       setCargandoCostos(true)
@@ -71,15 +69,14 @@ function DashboardAlumna({ perfil, usuarioId }) {
   }, [usuarioId])
 
 
-  // --- ¡FUNCIÓN QUE FALTABA! ---
-  // La re-agregamos aquí
+  // --- Función manejarSeleccionFoto (sin cambios) ---
   function manejarSeleccionFoto(evento) {
     if (evento.target.files && evento.target.files[0]) {
       setArchivoFoto(evento.target.files[0])
     }
   }
 
-  // --- Función de Submit de Pieza (sigue igual) ---
+  // --- Función manejarSubmitNuevaPieza (sin cambios) ---
   async function manejarSubmitNuevaPieza(evento) {
     evento.preventDefault()
     if (!nombrePieza) {
@@ -136,7 +133,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
     }
   }
 
-  // --- Función para formatear dinero (sigue igual) ---
+  // --- Función formatearMoneda (sin cambios) ---
   function formatearMoneda(valor) {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -144,7 +141,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
     }).format(valor)
   }
 
-  // --- Lógica de Cálculo de Saldos (sigue igual) ---
+  // --- Lógica de Cálculo de Saldos (sin cambios) ---
   const [totalCostos, totalPagos, saldoPendiente] = useMemo(() => {
     const totalCostos = costos.reduce((acc, costo) => acc + (costo.monto || 0), 0)
     const totalPagos = pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
@@ -157,7 +154,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       
-      {/* --- COLUMNA 1 y 2: PIEZAS (sigue igual) --- */}
+      {/* --- COLUMNA 1 y 2: PIEZAS (Sin Cambios) --- */}
       <div className="md:col-span-2">
         <h2 className="text-3xl font-semibold text-taller-green mb-4">
           Mi Taller
@@ -180,7 +177,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
                 Foto (Opcional)
               </label>
               <input type="file" id="fotoPieza" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-taller-beige file:text-taller-dark-blue hover:file:bg-taller-green" 
-                onChange={manejarSeleccionFoto} // Aquí es donde se llamaba
+                onChange={manejarSeleccionFoto}
                 disabled={cargandoForm} 
                 accept="image/png, image/jpeg"
               />
@@ -225,69 +222,54 @@ function DashboardAlumna({ perfil, usuarioId }) {
       </div>
 
 
-      {/* --- COLUMNA 3: ESTADO DE CUENTA (sigue igual) --- */}
+      {/* --- ¡COLUMNA 3 MODIFICADA! --- */}
       <div className="md:col-span-1">
         <h2 className="text-3xl font-semibold text-taller-green mb-4">
           Mi Cuenta
         </h2>
         <p className="text-lg text-taller-beige/80 mb-8">
-          Resumen de costos y pagos.
+          Resumen de tu saldo.
         </p>
 
-        {/* Tarjeta de Saldo Pendiente */}
+        {/* --- Tarjeta de Saldo Pendiente (SIMPLIFICADA) --- */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-inner mb-8">
           <h3 className="text-xl font-semibold text-white mb-4">
-            Saldo Pendiente
+            Tu Saldo Actual
           </h3>
           {(cargandoCostos || cargandoPagos) ? (
             <p className="text-gray-400">Calculando saldo...</p>
           ) : (
             <div>
-              <p className="text-sm text-red-400">Total Horneados (Costos):</p>
-              <p className="text-2xl font-bold text-red-400 mb-2">
-                {formatearMoneda(totalCostos)}
-              </p>
+              <p className="text-lg font-semibold text-taller-beige/80">Saldo a Pagar:</p>
               
-              <p className="text-sm text-green-400">Total Pagos Realizados:</p>
-              <p className="text-2xl font-bold text-green-400 mb-4">
-                {formatearMoneda(totalPagos)}
-              </p>
-              
-              <hr className="border-taller-beige/20 my-4" />
-              
-              <p className="text-lg font-semibold text-white">Saldo a Pagar:</p>
-              <p className="text-4xl font-bold text-taller-green">
+              {/* Lógica de color: Verde si es 0 o negativo (a favor), Rojo si debe */}
+              <p className={`text-4xl font-bold ${saldoPendiente <= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatearMoneda(saldoPendiente)}
               </p>
+              
+              {/* Texto de ayuda */}
+              {saldoPendiente <= 0 && (
+                <p className="text-sm text-green-400 mt-2">¡Estás al día!</p>
+              )}
+              {saldoPendiente > 0 && (
+                <p className="text-sm text-red-400 mt-2">Este es el monto que adeudas.</p>
+              )}
             </div>
           )}
+
+          {/* --- Botones para ver detalle (Paso 2) --- */}
+          <div className="mt-6 border-t border-taller-beige/20 pt-4 flex flex-col gap-2">
+             <button className="text-sm text-taller-green/80 hover:text-taller-green transition-colors text-left">
+                Ver historial de costos
+             </button>
+             <button className="text-sm text-taller-green/80 hover:text-taller-green transition-colors text-left">
+                Ver historial de pagos
+             </button>
+          </div>
+
         </div>
 
-        {/* Historial de Pagos */}
-        <div className="bg-gray-800 p-6 rounded-lg shadow-inner">
-          <h3 className="text-xl font-semibold text-white mb-6">
-            Historial de Pagos
-          </h3>
-          {cargandoPagos ? ( <p className="text-gray-400">Cargando tus pagos...</p> ) : pagos.length === 0 ? ( <p className="text-gray-400">Aún no tienes pagos registrados.</p> ) : (
-            <div className="space-y-4">
-              {pagos.map((pago) => (
-                <div key={pago.id} className="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
-                  <div>
-                    <p className="text-lg font-medium text-green-400">
-                      {formatearMoneda(pago.monto)}
-                    </p>
-                    <p className="text-sm text-gray-300">
-                      {pago.concepto || 'Pago'}
-                    </p>
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    {new Date(pago.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* ¡YA NO MOSTRAMOS EL HISTORIAL DE PAGOS AQUÍ! */}
         
       </div>
       
