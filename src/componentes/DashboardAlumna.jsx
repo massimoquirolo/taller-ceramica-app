@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import supabase from '../supabaseCliente'
+import HistorialModal from './HistorialModal' // <-- 1. IMPORTAMOS EL MODAL
 
-// Recibimos 'usuarioId' (sigue igual)
 function DashboardAlumna({ perfil, usuarioId }) {
   
   // --- Estados (sin cambios) ---
@@ -19,48 +19,34 @@ function DashboardAlumna({ perfil, usuarioId }) {
   const [costos, setCostos] = useState([])
   const [cargandoCostos, setCargandoCostos] = useState(true)
 
+  // --- NUEVO: Estado para el Modal ---
+  const [modalContent, setModalContent] = useState(null) // 'pagos', 'costos' o null
 
-  // --- useEffect para cargar PIEZAS (sin cambios) ---
-  useEffect(() => {
+  // --- Todos los useEffect (sin cambios) ---
+  useEffect(() => { /* ... (obtenerPiezas) ... */ 
     async function obtenerPiezas() {
       setCargandoPiezas(true)
-      const { data, error } = await supabase
-        .from('piezas')
-        .select('id, nombre_pieza, estado, created_at, foto_url') 
-        .eq('alumna_id', usuarioId)
-        .order('created_at', { ascending: false })
+      const { data, error } = await supabase.from('piezas').select('id, nombre_pieza, estado, created_at, foto_url').eq('alumna_id', usuarioId).order('created_at', { ascending: false })
       if (error) console.error('Error al cargar piezas:', error.message)
       else setPiezas(data)
       setCargandoPiezas(false)
     }
     obtenerPiezas()
   }, [usuarioId])
-
-  // --- useEffect para cargar PAGOS (sin cambios) ---
-  useEffect(() => {
+  useEffect(() => { /* ... (obtenerPagos) ... */ 
     async function obtenerPagos() {
       setCargandoPagos(true)
-      const { data, error } = await supabase
-        .from('pagos')
-        .select('id, monto, concepto, created_at')
-        .eq('alumna_id', usuarioId)
-        .order('created_at', { ascending: false })
+      const { data, error } = await supabase.from('pagos').select('id, monto, concepto, created_at').eq('alumna_id', usuarioId).order('created_at', { ascending: false })
       if (error) console.error('Error al cargar pagos:', error.message)
       else setPagos(data)
       setCargandoPagos(false)
     }
     obtenerPagos()
   }, [usuarioId])
-  
-  // --- useEffect para cargar COSTOS (sin cambios) ---
-  useEffect(() => {
+  useEffect(() => { /* ... (obtenerCostos) ... */ 
     async function obtenerCostos() {
       setCargandoCostos(true)
-      const { data, error } = await supabase
-        .from('costos')
-        .select('id, monto, concepto, created_at')
-        .eq('alumna_id', usuarioId)
-        .order('created_at', { ascending: false })
+      const { data, error } = await supabase.from('costos').select('id, monto, concepto, created_at').eq('alumna_id', usuarioId).order('created_at', { ascending: false })
       if (error) console.error('Error al cargar costos:', error.message)
       else setCostos(data)
       setCargandoCostos(false)
@@ -68,58 +54,37 @@ function DashboardAlumna({ perfil, usuarioId }) {
     obtenerCostos()
   }, [usuarioId])
 
-
-  // --- Función manejarSeleccionFoto (sin cambios) ---
-  function manejarSeleccionFoto(evento) {
+  // --- Todas las Funciones (sin cambios) ---
+  function manejarSeleccionFoto(evento) { /* ... */ 
     if (evento.target.files && evento.target.files[0]) {
       setArchivoFoto(evento.target.files[0])
     }
   }
-
-  // --- Función manejarSubmitNuevaPieza (sin cambios) ---
-  async function manejarSubmitNuevaPieza(evento) {
+  async function manejarSubmitNuevaPieza(evento) { /* ... */ 
     evento.preventDefault()
     if (!nombrePieza) {
       setError(true)
       setMensaje('Por favor, ponle un nombre a tu pieza.')
       return
     }
-
     setCargandoForm(true)
     setMensaje('')
     setError(false)
     let urlDeFotoPublica = null 
-
     if (archivoFoto) {
       const nombreArchivo = `${usuarioId}-${Date.now()}`
-      const { data: dataSubida, error: errorSubida } = await supabase.storage
-        .from('piezas')
-        .upload(nombreArchivo, archivoFoto)
-
+      const { data: dataSubida, error: errorSubida } = await supabase.storage.from('piezas').upload(nombreArchivo, archivoFoto)
       if (errorSubida) {
         setCargandoForm(false)
         setError(true)
         setMensaje(`Error al subir la foto: ${errorSubida.message}`)
         return
       }
-
-      const { data: dataUrl } = supabase.storage
-        .from('piezas')
-        .getPublicUrl(nombreArchivo)
+      const { data: dataUrl } = supabase.storage.from('piezas').getPublicUrl(nombreArchivo)
       urlDeFotoPublica = dataUrl.publicUrl
     }
-
-    const { data: dataInsert, error: errorInsert } = await supabase
-      .from('piezas')
-      .insert({ 
-        nombre_pieza: nombrePieza,
-        alumna_id: usuarioId,
-        foto_url: urlDeFotoPublica
-      })
-      .select('id, nombre_pieza, estado, created_at, foto_url')
-
+    const { data: dataInsert, error: errorInsert } = await supabase.from('piezas').insert({ nombre_pieza: nombrePieza, alumna_id: usuarioId, foto_url: urlDeFotoPublica }).select('id, nombre_pieza, estado, created_at, foto_url')
     setCargandoForm(false)
-
     if (errorInsert) {
       setError(true)
       setMensaje(`Error al registrar la pieza: ${errorInsert.message}`)
@@ -132,9 +97,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
       setPiezas(piezasActuales => [nuevaPieza, ...piezasActuales])
     }
   }
-
-  // --- Función formatearMoneda (sin cambios) ---
-  function formatearMoneda(valor) {
+  function formatearMoneda(valor) { /* ... */ 
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
@@ -146,22 +109,57 @@ function DashboardAlumna({ perfil, usuarioId }) {
     const totalCostos = costos.reduce((acc, costo) => acc + (costo.monto || 0), 0)
     const totalPagos = pagos.reduce((acc, pago) => acc + (pago.monto || 0), 0)
     const saldoPendiente = totalCostos - totalPagos
-    
     return [totalCostos, totalPagos, saldoPendiente]
   }, [costos, pagos])
 
+  // --- NUEVO: Funciones 'render' para los items del modal ---
+  const renderPagoItem = (pago) => (
+    <div key={pago.id} className="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
+      <div>
+        <p className="text-lg font-medium text-green-400">
+          {formatearMoneda(pago.monto)}
+        </p>
+        <p className="text-sm text-gray-300">
+          {pago.concepto || 'Pago'}
+        </p>
+      </div>
+      <p className="text-xs text-gray-400">
+        {new Date(pago.created_at).toLocaleDateString()}
+      </p>
+    </div>
+  );
+
+  const renderCostoItem = (costo) => (
+    <div key={costo.id} className="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
+      <div>
+        <p className="text-lg font-medium text-red-400">
+          {formatearMoneda(costo.monto)}
+        </p>
+        <p className="text-sm text-gray-300">
+          {costo.concepto || 'Costo de horneado'}
+        </p>
+      </div>
+      <p className="text-xs text-gray-400">
+        {new Date(costo.created_at).toLocaleDateString()}
+      </p>
+    </div>
+  );
+  
 
   return (
+    // Grid principal (sin cambios)
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       
       {/* --- COLUMNA 1 y 2: PIEZAS (Sin Cambios) --- */}
       <div className="md:col-span-2">
+        {/* ... (Todo el JSX de Mi Taller, Formulario y Lista de Piezas) ... */}
         <h2 className="text-3xl font-semibold text-taller-green mb-4">
           Mi Taller
         </h2>
         
         {/* Formulario de Pieza */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-inner max-w-md mb-12">
+          {/* ... */}
           <h3 className="text-xl font-semibold text-white mb-4">
             Registrar una Pieza Nueva
           </h3>
@@ -222,7 +220,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
       </div>
 
 
-      {/* --- ¡COLUMNA 3 MODIFICADA! --- */}
+      {/* --- COLUMNA 3 (MODIFICADA) --- */}
       <div className="md:col-span-1">
         <h2 className="text-3xl font-semibold text-taller-green mb-4">
           Mi Cuenta
@@ -231,7 +229,7 @@ function DashboardAlumna({ perfil, usuarioId }) {
           Resumen de tu saldo.
         </p>
 
-        {/* --- Tarjeta de Saldo Pendiente (SIMPLIFICADA) --- */}
+        {/* Tarjeta de Saldo (sin cambios) */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-inner mb-8">
           <h3 className="text-xl font-semibold text-white mb-4">
             Tu Saldo Actual
@@ -241,13 +239,9 @@ function DashboardAlumna({ perfil, usuarioId }) {
           ) : (
             <div>
               <p className="text-lg font-semibold text-taller-beige/80">Saldo a Pagar:</p>
-              
-              {/* Lógica de color: Verde si es 0 o negativo (a favor), Rojo si debe */}
               <p className={`text-4xl font-bold ${saldoPendiente <= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatearMoneda(saldoPendiente)}
               </p>
-              
-              {/* Texto de ayuda */}
               {saldoPendiente <= 0 && (
                 <p className="text-sm text-green-400 mt-2">¡Estás al día!</p>
               )}
@@ -257,21 +251,34 @@ function DashboardAlumna({ perfil, usuarioId }) {
             </div>
           )}
 
-          {/* --- Botones para ver detalle (Paso 2) --- */}
+          {/* Botones (MODIFICADOS) */}
           <div className="mt-6 border-t border-taller-beige/20 pt-4 flex flex-col gap-2">
-             <button className="text-sm text-taller-green/80 hover:text-taller-green transition-colors text-left">
+             <button 
+                className="text-sm text-taller-green/80 hover:text-taller-green transition-colors text-left"
+                onClick={() => setModalContent('costos')} // <-- ONCLICK
+             >
                 Ver historial de costos
              </button>
-             <button className="text-sm text-taller-green/80 hover:text-taller-green transition-colors text-left">
+             <button 
+                className="text-sm text-taller-green/80 hover:text-taller-green transition-colors text-left"
+                onClick={() => setModalContent('pagos')} // <-- ONCLICK
+             >
                 Ver historial de pagos
              </button>
           </div>
-
-        </div>
-
-        {/* ¡YA NO MOSTRAMOS EL HISTORIAL DE PAGOS AQUÍ! */}
-        
+        </div>        
       </div>
+
+      {/* --- NUEVO: RENDERIZADO DEL MODAL --- */}
+      {/* Si 'modalContent' no es 'null', mostramos el modal */}
+      {modalContent && (
+        <HistorialModal
+          titulo={modalContent === 'pagos' ? 'Historial de Pagos' : 'Historial de Costos'}
+          items={modalContent === 'pagos' ? pagos : costos}
+          renderItem={modalContent === 'pagos' ? renderPagoItem : renderCostoItem}
+          onClose={() => setModalContent(null)} // El 'onClose' setea el estado a 'null'
+        />
+      )}
       
     </div>
   )
